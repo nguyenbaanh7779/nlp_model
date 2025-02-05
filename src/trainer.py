@@ -1,0 +1,68 @@
+import torch
+import time
+
+
+def get_batch(source, i, stride, evaluation=False):
+    seq_len = min(stride, len(source) - 1 - i)
+    data = source[i : i + seq_len]
+    target = source[i + 1 : i + 1 + seq_len].view(-1)
+
+    if evaluation:
+        # Trong chế độ đánh giá, đảm bảo rằng không cần theo dõi gradient
+        with torch.no_grad():
+            data = data.clone()
+            target = target.clone()
+
+    return data, target
+
+
+def repackage_hidden(h):
+    """Wraps hidden states in new Variables, to detach them from their history."""
+    if isinstance(h, torch.Tensor):
+        return h.detach()
+    else:
+        return tuple(repackage_hidden(v) for v in h)
+
+
+def train_each_epoch(
+    model,
+    train_data,
+    n_token,
+    batch_size,
+    criterion,
+    learning_rate,
+    stride,
+    max_grad_norm,
+    log_interval,
+):
+    start_time = time.time()
+    total_loss = 0
+    model.train()
+    hidden = model.init_hidden(bsz=batch_size)
+
+    for batch, i in enumerate(range(0, train_data.size(0) - 1, stride)):
+        data, target = get_batch(
+            source=train_data, i=0, stride=stride
+        )  # data(bptt, batch), target(bppt*batch)
+        hidden = repackage_hidden(hidden)  # hidden(num_layer, batch_size, emb_size)
+
+        model.zero_grad()
+        output, hidden = model(
+            data, hidden
+        )  # output(bptt, batch_size, n_token), hidden(n_layer, batch_size, emb_size)
+        loss = criterion(output.view(-1, n_token), target)
+        loss.backward()
+
+        torch.nn.utils.clip_grad_norm_(
+            parameters=model.parameters(), max_norm=max_grad_norm
+        )
+        for p in model.parameters():
+            p.data.add_(-learning_rate, p.grad.data)
+        total_loss += loss
+
+        if batch % log_interval == 0 and batch > 0:
+            cur_loss = total_loss / log_interval()
+            elapsed = time.time() - start_time
+            print(
+                f"{batch}/{len(train_data)} batches | learning rate {learning_rate} | ms/batch {elapsed * 1000 / log_interval} | loss {cur_loss} | ppl {torch.exp(cur_loss)}"
+            )

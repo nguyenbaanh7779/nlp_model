@@ -1,0 +1,6 @@
+model: RNN_TANH
+ninp: 200
+nhid: 200
+nlayers: 2
+dropout: 0.2
+tie_weights: True

@@ -1,0 +1,5 @@
+batch_size: 64
+lr: 1e-4
+stride: 300
+max_grad_norm: 1
+log_interval: 200
