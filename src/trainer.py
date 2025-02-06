@@ -1,6 +1,12 @@
 import torch
 import time
+import os
+import yaml
+import torch.nn as nn
 
+import config
+import src.utils as utils
+from src.model.rnn import RNNModel
 
 def get_batch(source, i, stride, evaluation=False):
     seq_len = min(stride, len(source) - 1 - i)
@@ -40,6 +46,9 @@ def train_each_epoch(
     model.train()
     hidden = model.init_hidden(bsz=batch_size)
 
+    if type(learning_rate) is str:
+        learning_rate = float(learning_rate)
+
     for batch, i in enumerate(range(0, train_data.size(0) - 1, stride)):
         data, target = get_batch(
             source=train_data, i=0, stride=stride
@@ -66,3 +75,36 @@ def train_each_epoch(
             print(
                 f"{batch}/{len(train_data)} batches | learning rate {learning_rate} | ms/batch {elapsed * 1000 / log_interval} | loss {cur_loss} | ppl {torch.exp(cur_loss)}"
             )
+
+
+def train_model():
+    # Load data
+    print("Loading data ...")
+    corpus_path = os.path.join(config.ROOT_PATH, "data/raw/pentext.pt")
+    corpus = torch.load(corpus_path)
+    
+    with open(os.path.join(config.ROOT_PATH, "config/model_param.yaml"), "r") as f:
+        model_param = yaml.safe_load(f)
+    f.close()
+    
+    # Init model
+    print("Initaling model ...")
+    model_param["ntoken"] = corpus.vocab_size
+    model = RNNModel(**model_param)
+    
+    # Train model
+    print("Starting train model ...")
+    with open(os.path.join(config.ROOT_PATH, "config/trainer_param.yaml"), "r") as f:
+        trainer_params = yaml.safe_load(f)
+    f.close()
+    
+    train_data = utils.batchify(data=corpus.train, batch_size=trainer_params["batch_size"])
+    # valid_data = utils.batchify(data=corpus.valid, batch_size=trainer_params["batch_size"])
+    # test_data = utils.batchify(data=corpus.test, batch_size=trainer_params["batch_size"])
+    
+    trainer_params["model"] = model
+    trainer_params["train_data"] = train_data
+    trainer_params["n_token"] = corpus.vocab_size
+    trainer_params["criterion"] = nn.CrossEntropyLoss()
+    
+    train_each_epoch(**trainer_params)
