@@ -108,3 +108,7 @@ def train_model():
     trainer_params["criterion"] = nn.CrossEntropyLoss()
     
     train_each_epoch(**trainer_params)
+
+
+if __name__:
+    train_model()
