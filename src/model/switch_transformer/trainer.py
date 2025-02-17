@@ -1,3 +1,4 @@
+import os
 import torch
 import numpy as np
 import yaml
@@ -9,7 +10,9 @@ from transformers import (
     AutoTokenizer,
     SwitchTransformersForConditionalGeneration,
 )
+from tqdm import tqdm
 
+import config_env
 from src.data.preparing import CustomDataset
 
 
@@ -22,7 +25,7 @@ def train_each_epoch(epoch, model, device, loader, optimizer):
         "decoder_aux_loss": [],
     }
     model.train()
-    for _, data in enumerate(loader, 0):
+    for _, data in tqdm(enumerate(loader, 0)):
         labels = data["target_ids"].to(device, dtype=torch.long)
         labels = model._shift_right(labels)
 
@@ -50,7 +53,7 @@ def train_each_epoch(epoch, model, device, loader, optimizer):
         logging["decoder_aux_loss"] = outputs.decoder_aux_loss.item()
 
         if _ % 500 == 0:
-            print(f"Epoch: {epoch}, Loss:  {loss.item()}")
+            print(f"Epoch: {epoch}| Loop:  {_}| Loss:  {loss.item()}")
 
         if (_ + 1) % 2000 == 0:
             break
@@ -58,13 +61,12 @@ def train_each_epoch(epoch, model, device, loader, optimizer):
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-        return model, logging
+    return model, logging
 
 
 def train(model, device, training_loader, optimizer, num_epochs):
     # Training loop
     all_logging = dict()
-    print("Initiating Fine-Tuning for the model on our dataset")
     for epoch in range(num_epochs):
         model, logging = train_each_epoch(
             epoch, model, device, training_loader, optimizer
@@ -74,7 +76,7 @@ def train(model, device, training_loader, optimizer, num_epochs):
 
 
 def run():
-    with open("config/switch_transfomer/config.yaml", "r") as f:
+    with open(os.path.join(config_env.ROOT_PATH, "config/switch_transfomer/config.yaml"), "r") as f:
         config = yaml.safe_load(f)
     f.close()
     # Set random seeds and deterministic pytorch for reproducibility
@@ -84,7 +86,7 @@ def run():
 
     # Prepare data to training
     print("Preparing data ...")
-    dataset = datasets.load_from_disk("data/raw/xsum")
+    dataset = datasets.load_from_disk(os.path.join(config_env.ROOT_PATH, "data/raw/xsum"))
     # Creation of Dataset and Dataloader
     train_dataset = dataset["train"]
     tokenizer = AutoTokenizer.from_pretrained("google/switch-base-8")
@@ -121,8 +123,14 @@ def run():
         optimizer=optimizer,
         num_epochs=config["TRAIN_EPOCHS"],
     )
-    model.save_pretrained("model/switch_transformer")
-    tokenizer.save_pretrained("tokenizer/switch_transformer")
-    with open("result/switch_transformer/logging/loss_log.json", "r") as f:
+    model.save_pretrained(os.path.join(config_env.ROOT_PATH, "model/switch_transformer"))
+    tokenizer.save_pretrained(os.path.join(config_env.ROOT_PATH, "tokenizer/switch_transformer"))
+    with open(
+      os.path.join(
+        config_env.ROOT_PATH, 
+        "result/switch_transformer/logging/loss_log.json"
+        ),
+        "w"
+     ) as f:
         json.dump(logging, f)
     f.close()
