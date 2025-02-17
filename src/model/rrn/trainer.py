@@ -4,7 +4,7 @@ import os
 import yaml
 import torch.nn as nn
 
-import config
+import my_source.config_env as config_env
 import src.utils as utils
 from my_source.src.model.rrn.rnn import RNNModel
 
@@ -90,12 +90,12 @@ def train_model():
 
     # Load data
     print("Loading data ...")
-    corpus_path = os.path.join(config.ROOT_PATH, "data/raw/pentext.pt")
+    corpus_path = os.path.join(config_env.ROOT_PATH, "data/raw/pentext.pt")
     corpus = torch.load(corpus_path)
 
     # Init model
     print("Initaling model ...")
-    with open(os.path.join(config.ROOT_PATH, "config/model_param.yaml"), "r") as f:
+    with open(os.path.join(config_env.ROOT_PATH, "config/model_param.yaml"), "r") as f:
         model_param = yaml.safe_load(f)
     f.close()
     model_param["ntoken"] = corpus.vocab_size
@@ -103,7 +103,7 @@ def train_model():
 
     # Train model
     print("Starting train model ...")
-    with open(os.path.join(config.ROOT_PATH, "config/trainer_param.yaml"), "r") as f:
+    with open(os.path.join(config_env.ROOT_PATH, "config/trainer_param.yaml"), "r") as f:
         trainer_params = yaml.safe_load(f)
     f.close()
 
