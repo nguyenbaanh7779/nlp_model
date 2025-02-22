@@ -2,12 +2,12 @@ import torch
 
 
 def batchify(data: torch.Tensor, batch_size):
-    # Work out how cleanly we can divide the dataset into bsz parts.
-    nb_batches = data.size(0) // batch_size
-    # Trim off any extra elements that wouldn't cleanly fit (remainders).
-    data = data.narrow(0, 0, nb_batches * batch_size)
+    # Tính số batch trên data
+    num_batches = data.size(0) // batch_size
+    # Lấy đủ số lượng batch có thể lấy trên dữ liệu và cắt bỏ những dữ liệu cuối
+    data = data.narrow(0, 0, num_batches * batch_size)
     # Evenly divide the data across the bsz batches.
-    data = data.view(batch_size, -1).t().contiguous()
+    data = data.view(num_batches, -1).t().contiguous()
     return data
 
 

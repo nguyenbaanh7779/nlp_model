@@ -1,3 +1,3 @@
 import os
 
-ROOT_PATH = os.path.join(os.getcwd(), "nlp_model")
+ROOT_PATH = os.getcwd()
